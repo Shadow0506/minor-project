@@ -1,0 +1,159 @@
+<?xml version="1.0" ?>
+
+<!--
+  Q-Learning Swarm Experiment Configuration
+  
+  This file configures the ARGoS simulation environment:
+  - 20x20m arena
+  - 4 FootBots with Q-learning controllers
+  - Goal position at (18, 18)
+  - Physics engine settings
+  - Visualization settings
+-->
+
+<argos-configuration>
+
+  <!-- ************************* -->
+  <!-- * General configuration * -->
+  <!-- ************************* -->
+  <framework>
+    <system threads="0" />
+    <experiment length="0"
+                ticks_per_second="10"
+                random_seed="124" />
+  </framework>
+
+  <!-- *************** -->
+  <!-- * Controllers * -->
+  <!-- *************** -->
+  <controllers>
+
+    <q_swarm_controller id="qsc"
+                        library="controllers/q_swarm_controller/build/libq_swarm_controller">
+      <actuators>
+        <differential_steering implementation="default" />
+      </actuators>
+      <sensors>
+        <footbot_proximity implementation="default" show_rays="true" />
+        <positioning implementation="default" />
+      </sensors>
+      <params>
+        <!-- Goal position (all robots share same goal) -->
+        <goal_x value="18.0" />
+        <goal_y value="18.0" />
+        
+        <!-- Movement velocity (m/s) -->
+        <velocity value="0.1" />
+        
+        <!-- Maximum steps per episode before reset -->
+        <max_steps value="500" />
+        
+        <!-- Maximum number of episodes to run -->
+        <max_episodes value="1000" />
+      </params>
+    </q_swarm_controller>
+
+  </controllers>
+
+  <!-- *********************** -->
+  <!-- * Arena configuration * -->
+  <!-- *********************** -->
+  <arena size="20, 20, 2" center="10, 10, 1">
+
+    <!-- Floor -->
+    <floor id="floor"
+           source="loop_functions"
+           pixels_per_meter="50" />
+
+    <!-- Walls around the arena -->
+    <box id="wall_north" size="20, 0.1, 0.5" movable="false">
+      <body position="10, 20, 0" orientation="0, 0, 0" />
+    </box>
+    <box id="wall_south" size="20, 0.1, 0.5" movable="false">
+      <body position="10, 0, 0" orientation="0, 0, 0" />
+    </box>
+    <box id="wall_east" size="0.1, 20, 0.5" movable="false">
+      <body position="20, 10, 0" orientation="0, 0, 0" />
+    </box>
+    <box id="wall_west" size="0.1, 20, 0.5" movable="false">
+      <body position="0, 10, 0" orientation="0, 0, 0" />
+    </box>
+
+    <!-- Goal marker (visual indicator) -->
+    <box id="goal_marker" size="1.0, 1.0, 0.1" movable="false">
+      <body position="18, 18, 0" orientation="0, 0, 0" />
+      <leds medium="leds">
+        <led offset="0, 0, 0.11" anchor="origin" color="green" />
+      </leds>
+    </box>
+
+    <!-- Place 4 FootBots in starting positions -->
+    <!-- Starting positions: (2,2), (2,4), (4,2), (4,4) -->
+    
+    <foot-bot id="fb0">
+      <body position="2, 2, 0" orientation="0, 0, 0" />
+      <controller config="qsc" />
+    </foot-bot>
+
+    <foot-bot id="fb1">
+      <body position="2, 4, 0" orientation="0, 0, 0" />
+      <controller config="qsc" />
+    </foot-bot>
+
+    <foot-bot id="fb2">
+      <body position="4, 2, 0" orientation="0, 0, 0" />
+      <controller config="qsc" />
+    </foot-bot>
+
+    <foot-bot id="fb3">
+      <body position="4, 4, 0" orientation="0, 0, 0" />
+      <controller config="qsc" />
+    </foot-bot>
+
+  </arena>
+
+  <!-- ******************* -->
+  <!-- * Physics engines * -->
+  <!-- ******************* -->
+  <physics_engines>
+    <dynamics2d id="dyn2d">
+      <boundaries>
+        <top height="1" />
+        <bottom height="0" />
+        <sides>
+          <vertex point="0, 0" />
+          <vertex point="0, 20" />
+          <vertex point="20, 20" />
+          <vertex point="20, 0" />
+        </sides>
+      </boundaries>
+    </dynamics2d>
+  </physics_engines>
+
+  <!-- ********* -->
+  <!-- * Media * -->
+  <!-- ********* -->
+  <media>
+    <led id="leds" />
+  </media>
+
+  <!-- ****************** -->
+  <!-- * Visualization  * -->
+  <!-- ****************** -->
+  <visualization>
+    <qt-opengl>
+      <camera>
+        <placements>
+          <!-- Top-down view of the arena -->
+          <placement index="0" position="10, 10, 15" look_at="10, 10, 0" up="0, 1, 0" lens_focal_length="30" />
+          <!-- Side view -->
+          <placement index="1" position="10, 0, 10" look_at="10, 10, 0" up="0, 0, 1" lens_focal_length="30" />
+          <!-- Isometric view -->
+          <placement index="2" position="5, 5, 10" look_at="10, 10, 0" up="0, 0, 1" lens_focal_length="30" />
+        </placements>
+      </camera>
+      <user_functions label="q_learning_vis" />
+    </qt-opengl>
+  </visualization>
+
+</argos-configuration>
