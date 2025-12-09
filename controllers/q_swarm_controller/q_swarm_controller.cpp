@@ -33,7 +33,13 @@ namespace argos {
       m_fGoalThreshold(0.5f),
       m_bEpisodeDone(false),
       m_fEpisodeReward(0.0f),
-      m_nRobotIdNum(0) {
+      m_nRobotIdNum(0),
+      m_nCollisionCount(0),
+      m_nMaxCollisionsPerEpisode(5),  // Allow up to 5 collisions before ending episode
+      m_nConsecutiveCollisions(0),
+      m_bWasColliding(false),
+      m_cOriginalPosition(0.0f, 0.0f),
+      m_cOriginalOrientation(CQuaternion()) {
    }
 
    /****************************************/
@@ -81,6 +87,13 @@ namespace argos {
       const CCI_PositioningSensor::SReading& sReading = m_pcPositioning->GetReading();
       m_cPreviousPosition.Set(sReading.Position.GetX(), sReading.Position.GetY());
 
+      // Store original position and orientation for episode resets
+      m_cOriginalPosition.Set(sReading.Position.GetX(), sReading.Position.GetY());
+      m_cOriginalOrientation = sReading.Orientation;
+
+      LOG << "[Robot " << m_strRobotId << "] Original position: (" 
+          << m_cOriginalPosition.GetX() << ", " << m_cOriginalPosition.GetY() << ")" << std::endl;
+
       // Connect to Q-Network server
       ConnectToQNetwork();
    }
@@ -112,6 +125,14 @@ namespace argos {
 
       // Execute the action
       ExecuteAction(action);
+      
+      // Debug: Log action and position every 50 steps
+      if (m_nSteps % 50 == 0) {
+         const CCI_PositioningSensor::SReading& sReading = m_pcPositioning->GetReading();
+         LOG << "[Robot " << m_strRobotId << "] Step " << m_nSteps 
+             << " | Pos: (" << sReading.Position.GetX() << ", " << sReading.Position.GetY() 
+             << ") | Action: " << action << std::endl;
+      }
 
       // Calculate reward and check if done
       bool done = false;
@@ -128,6 +149,10 @@ namespace argos {
              << " ended. Steps: " << m_nSteps 
              << ", Reward: " << m_fEpisodeReward << std::endl;
       }
+      
+      // Update previous position for next step's movement calculation
+      const CCI_PositioningSensor::SReading& sReading = m_pcPositioning->GetReading();
+      m_cPreviousPosition.Set(sReading.Position.GetX(), sReading.Position.GetY());
    }
 
    /****************************************/
@@ -279,26 +304,62 @@ namespace argos {
       float leftSpeed = 0.0f;
       float rightSpeed = 0.0f;
 
-      switch (action) {
-         case 0:  // Move forward
-            leftSpeed = m_fVelocity;
-            rightSpeed = m_fVelocity;
-            break;
-         case 1:  // Turn left
-            leftSpeed = -m_fVelocity * 0.5f;
+      // Detect if currently colliding
+      bool isColliding = DetectCollision();
+      
+      // COLLISION RECOVERY MODE: If colliding, override action with recovery behavior
+      if (isColliding && m_nSteps > 3) {
+         // Back up and turn away from obstacle
+         // Determine which side has more obstacle readings
+         const CCI_FootBotProximitySensor::TReadings& tReadings = m_pcProximity->GetReadings();
+         float leftSum = 0.0f, rightSum = 0.0f;
+         
+         // Sum up left side sensors (0-11)
+         for (size_t i = 0; i < 12; ++i) {
+            leftSum += tReadings[i].Value;
+         }
+         // Sum up right side sensors (12-23)
+         for (size_t i = 12; i < 24; ++i) {
+            rightSum += tReadings[i].Value;
+         }
+         
+         // Turn away from the side with more obstacle
+         if (leftSum > rightSum) {
+            // Obstacle on left, turn right while backing up
+            leftSpeed = -m_fVelocity * 0.3f;
             rightSpeed = m_fVelocity * 0.5f;
-            break;
-         case 2:  // Turn right
+         } else {
+            // Obstacle on right (or equal), turn left while backing up
             leftSpeed = m_fVelocity * 0.5f;
-            rightSpeed = -m_fVelocity * 0.5f;
-            break;
-         case 3:  // Stop
-            leftSpeed = 0.0f;
-            rightSpeed = 0.0f;
-            break;
-         default:
-            leftSpeed = m_fVelocity;
-            rightSpeed = m_fVelocity;
+            rightSpeed = -m_fVelocity * 0.3f;
+         }
+         
+         if (m_nSteps % 20 == 0) {
+            LOG << "[Robot " << m_strRobotId << "] COLLISION RECOVERY: Backing up and turning" << std::endl;
+         }
+      } else {
+         // Normal action execution
+         switch (action) {
+            case 0:  // Move forward
+               leftSpeed = m_fVelocity;
+               rightSpeed = m_fVelocity;
+               break;
+            case 1:  // Turn left
+               leftSpeed = -m_fVelocity * 0.5f;
+               rightSpeed = m_fVelocity * 0.5f;
+               break;
+            case 2:  // Turn right
+               leftSpeed = m_fVelocity * 0.5f;
+               rightSpeed = -m_fVelocity * 0.5f;
+               break;
+            case 3:  // Stop
+               leftSpeed = 0.0f;
+               rightSpeed = 0.0f;
+               break;
+            default:
+               leftSpeed = m_fVelocity;
+               rightSpeed = m_fVelocity;
+         }
       }
 
       // Debug: Log action and velocities
@@ -324,6 +385,10 @@ namespace argos {
       // Calculate distance to goal
       float currentDistance = (currentPos - m_cGoalPosition).Length();
       
+      // NOTE: Formation boundary checking is now handled by the loop function
+      // The loop function will reset ALL robots when any one leaves the dynamic boundary
+      // This allows the Q-Network to keep its learned parameters across resets
+      
       // DYNAMIC SWARM COHESION CHECK
       // The swarm center moves along the path from start (4,4) to goal (18,18)
       // This encourages robots to move together toward the goal
@@ -337,11 +402,12 @@ namespace argos {
       CVector2 expectedSwarmCenter = startPosition + (pathDirection * currentProgress);
       
       // Allow some deviation from the moving swarm center
-      float maxSwarmDeviation = 5.0f;  // Robots can be 5m apart from each other
+      float maxSwarmDeviation = 8.0f;  // Robots can be 8m apart - increased to allow more flexibility
       float deviationFromSwarm = (currentPos - expectedSwarmCenter).Length();
       
-      if (deviationFromSwarm > maxSwarmDeviation && m_nSteps > 10) {
+      if (deviationFromSwarm > maxSwarmDeviation && m_nSteps > 50) {
          // Penalty for straying too far from swarm formation
+         // Only check after step 50 to allow robots to spread out initially
          reward = -2.0f;
          done = true;
          LOG << "[Robot " << m_strRobotId << "] STRAYED FROM SWARM! Deviation: " 
@@ -352,7 +418,7 @@ namespace argos {
       // BOUNDARY CHECK - Penalize going out of bounds
       if (currentPos.GetX() < 1.0f || currentPos.GetX() > 19.0f ||
           currentPos.GetY() < 1.0f || currentPos.GetY() > 19.0f) {
-         reward = -5.0f;
+         reward = -2.0f;  // REDUCED penalty (was -5) to allow learning from mistakes
          done = true;
          LOG << "[Robot " << m_strRobotId << "] OUT OF BOUNDS!" << std::endl;
          return reward;
@@ -367,47 +433,87 @@ namespace argos {
       }
       
       // Check for collision (NEGATIVE OUTCOME) - but only after a few steps
+      // CONTINUE AFTER COLLISION - don't end episode immediately
+      // Only count NEW collisions, not sustained ones
       if (m_nSteps > 3 && DetectCollision()) {
-         reward = -10.0f;  // Strong penalty for collision
-         done = true;
-         LOG << "[Robot " << m_strRobotId << "] COLLISION DETECTED!" << std::endl;
-         return reward;
+         m_nConsecutiveCollisions++;
+         
+         // Only count as a "new" collision if this is the first collision frame
+         if (!m_bWasColliding) {
+            m_nCollisionCount++;
+            reward = -3.0f;  // REDUCED penalty (was -10) to allow learning from collisions
+            
+            // If too many collisions, end episode (soft constraint becomes hard)
+            if (m_nCollisionCount >= m_nMaxCollisionsPerEpisode) {
+               done = true;
+               LOG << "[Robot " << m_strRobotId << "] TOO MANY COLLISIONS! (" 
+                   << m_nCollisionCount << "/" << m_nMaxCollisionsPerEpisode << ") Episode ended." << std::endl;
+               m_bWasColliding = false;
+               m_nConsecutiveCollisions = 0;
+               return reward;
+            }
+            
+            LOG << "[Robot " << m_strRobotId << "] COLLISION DETECTED! Count: " 
+                << m_nCollisionCount << "/" << m_nMaxCollisionsPerEpisode 
+                << " (continuing episode)" << std::endl;
+            m_bWasColliding = true;
+            return reward;
+         } else {
+            // Still colliding - smaller penalty, encourage escaping
+            reward = -0.5f;  // REDUCED (was -2) to allow recovery
+            m_bWasColliding = true;
+            return reward;
+         }
+      } else {
+         // Not colliding - reset consecutive collision counter
+         m_nConsecutiveCollisions = 0;
+         m_bWasColliding = false;
       }
 
       // STRATEGIC MOVEMENT REWARDS:
       
       // 1. STRONG Progress toward goal (PRIMARY OBJECTIVE)
       float previousDistance = (m_cPreviousPosition - m_cGoalPosition).Length();
-      float progressReward = (previousDistance - currentDistance) * 5.0f;  // INCREASED: Strong incentive to move toward goal
+      float progressReward = (previousDistance - currentDistance) * 10.0f;  // DOUBLED: Very strong incentive to move toward goal
       reward += progressReward;
+      
+      // Check if robot is stuck (not making any meaningful movement)
+      float movementDistance = (currentPos - m_cPreviousPosition).Length();
+      if (movementDistance < 0.01f && m_nSteps > 10) {
+         // Robot is stuck or just turning in place - apply mild penalty
+         reward -= 0.5f;  // REDUCED (was -1) to be less punishing
+      } else if (movementDistance > 0.05f) {
+         // Reward any forward movement
+         reward += 0.5f;  // NEW: Encourage movement
+      }
       
       // 2. Swarm cohesion bonus (reward staying together while progressing)
       float cohesionBonus = 0.0f;
       if (deviationFromSwarm < 2.0f) {
-         cohesionBonus = 0.4f;  // Tight formation
+         cohesionBonus = 0.8f;  // INCREASED: Tight formation
       } else if (deviationFromSwarm < 4.0f) {
-         cohesionBonus = 0.2f;  // Good formation
+         cohesionBonus = 0.4f;  // INCREASED: Good formation
       }
       reward += cohesionBonus;
       
       // 3. Proximity bonus (encourage getting closer to goal)
       float proximityBonus = 0.0f;
       if (currentDistance < 5.0f) {
-         proximityBonus = 1.0f;  // Very close to goal - INCREASED
+         proximityBonus = 2.0f;  // DOUBLED: Very close to goal
       } else if (currentDistance < 10.0f) {
-         proximityBonus = 0.5f;  // Medium distance - INCREASED
+         proximityBonus = 1.0f;  // DOUBLED: Medium distance
       } else if (currentDistance < 15.0f) {
-         proximityBonus = 0.2f;  // Making progress
+         proximityBonus = 0.5f;  // INCREASED: Making progress
       }
       reward += proximityBonus;
       
       // 4. Forward movement bonus (encourage any movement toward goal)
       if (progressReward > 0.01f) {
-         reward += 0.3f;  // Bonus for making forward progress
+         reward += 1.0f;  // INCREASED bonus for making forward progress
       }
       
       // 5. Very small time penalty (don't discourage exploration)
-      reward -= 0.005f;
+      reward -= 0.002f;  // REDUCED (was -0.005) to be less punishing
       
       // 6. Obstacle avoidance bonus (reward safe navigation)
       const CCI_FootBotProximitySensor::TReadings& tReadings = m_pcProximity->GetReadings();
@@ -421,7 +527,7 @@ namespace argos {
       
       // Reward for safely navigating near obstacles while making progress
       if (nearObstacle && progressReward > 0) {
-         reward += 0.2f;  // Bonus for making progress while avoiding obstacles
+         reward += 0.5f;  // INCREASED bonus for making progress while avoiding obstacles
       }
 
       return reward;
@@ -448,9 +554,25 @@ namespace argos {
       // - Robots can legitimately stop (action 3)
       // - Robots can turn in place (actions 1, 2) with minimal forward movement
       const CCI_FootBotProximitySensor::TReadings& tReadings = m_pcProximity->GetReadings();
+      
+      // Debug: Print max proximity value every 50 steps
+      if (m_nSteps % 50 == 0) {
+         float maxProx = 0.0f;
+         for (size_t i = 0; i < tReadings.size(); ++i) {
+            if (tReadings[i].Value > maxProx) {
+               maxProx = tReadings[i].Value;
+            }
+         }
+         if (maxProx > 0.3f) {
+            LOG << "[Robot " << m_strRobotId << "] Step " << m_nSteps 
+                << " Max proximity: " << maxProx << std::endl;
+         }
+      }
+      
       for (size_t i = 0; i < tReadings.size(); ++i) {
-         // Value > 0.9 indicates very close proximity or contact
-         if (tReadings[i].Value > 0.9f) {
+         // Value > 0.85 indicates very close proximity or contact
+         // Raised from 0.7 to be more strict - only count real hard collisions
+         if (tReadings[i].Value > 0.85f) {
             return true;
          }
       }
@@ -482,16 +604,30 @@ namespace argos {
       m_nSteps = 0;
       m_bEpisodeDone = false;
       m_fEpisodeReward = 0.0f;
+      m_nCollisionCount = 0;  // Reset collision counter
+      m_nConsecutiveCollisions = 0;  // Reset consecutive collisions
+      m_bWasColliding = false;  // Reset collision flag
 
       // Stop the robot
       m_pcWheels->SetLinearVelocity(0.0f, 0.0f);
 
+      // Send RESET signal to Python server to coordinate episode reset
+      if (m_bConnected) {
+         std::ostringstream oss;
+         oss << "RESET|" << m_nRobotIdNum << "|" << m_cOriginalPosition.GetX() 
+             << "|" << m_cOriginalPosition.GetY();
+         SendMessage(oss.str());
+      }
+
       // Note: ARGoS will reset robot positions via the experiment file
+      // or through loop functions. The Python server should coordinate this.
       // Update previous position
       const CCI_PositioningSensor::SReading& sReading = m_pcPositioning->GetReading();
       m_cPreviousPosition.Set(sReading.Position.GetX(), sReading.Position.GetY());
 
-      LOG << "[Robot " << m_strRobotId << "] Starting episode " << m_nEpisode << std::endl;
+      LOG << "[Robot " << m_strRobotId << "] Starting episode " << m_nEpisode 
+          << " - Requesting position reset to (" << m_cOriginalPosition.GetX() 
+          << ", " << m_cOriginalPosition.GetY() << ")" << std::endl;
    }
 
    /****************************************/

@@ -184,6 +184,14 @@
   </media>
 
   <!-- ****************** -->
+  <!-- * Loop Functions * -->
+  <!-- ****************** -->
+  <loop_functions library="/home/shadow56/Desktop/minor-project/loop_functions/build/libq_swarm_loop_functions"
+                  label="q_swarm_loop_functions">
+    <params formation_size="5.0" />
+  </loop_functions>
+
+  <!-- ****************** -->
   <!-- * Visualization  * -->
   <!-- ****************** -->
   <visualization>

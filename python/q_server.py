@@ -136,6 +136,9 @@ class QServer:
         elif msg_type == "REWARD":
             return self.handle_reward(parts)
         
+        elif msg_type == "RESET":
+            return self.handle_reset(parts)
+        
         else:
             print(f"[WARNING] Unknown message type: {msg_type}")
             return None
@@ -207,12 +210,13 @@ class QServer:
                 # Store episode reward
                 self.agent.episode_rewards.append(self.episode_rewards[robot_id])
                 
-                # Reset episode tracking for this robot
+                # Increment episode count for this robot AND the agent
                 self.episode_rewards[robot_id] = 0.0
                 self.episode_steps[robot_id] = 0
                 
                 # Increment episode count
                 self.episode_count += 1
+                self.agent.episode_count += 1  # Track in agent for adaptive epsilon
                 
                 # Save model periodically
                 if self.episode_count % 25 == 0:
@@ -226,6 +230,31 @@ class QServer:
         
         except Exception as e:
             print(f"[ERROR] Error handling reward: {e}")
+            return "ACK"
+    
+    def handle_reset(self, parts):
+        """
+        Handle RESET message
+        Format: RESET|robot_id|original_x|original_y
+        Returns: ACK
+        """
+        try:
+            robot_id = int(parts[1])
+            original_x = float(parts[2])
+            original_y = float(parts[3])
+            
+            print(f"\n[RESET] Robot {robot_id} requesting reset to ({original_x:.2f}, {original_y:.2f})")
+            print(f"        Episode ended - robot left formation area")
+            print(f"        ** MANUAL RESET REQUIRED: Please restart ARGoS simulation **\n")
+            
+            # Reset episode tracking for this robot
+            self.episode_rewards[robot_id] = 0.0
+            self.episode_steps[robot_id] = 0
+            
+            return "ACK"
+        
+        except Exception as e:
+            print(f"[ERROR] Error handling reset: {e}")
             return "ACK"
     
     def save_model(self):

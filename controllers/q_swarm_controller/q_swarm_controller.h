@@ -14,6 +14,7 @@
 #include <argos3/plugins/robots/generic/control_interface/ci_positioning_sensor.h>
 #include <argos3/plugins/robots/foot-bot/control_interface/ci_footbot_proximity_sensor.h>
 #include <argos3/core/utility/math/vector2.h>
+#include <argos3/core/utility/math/quaternion.h>
 #include <argos3/core/utility/logging/argos_log.h>
 
 #include <string>
@@ -118,6 +119,16 @@ namespace argos {
 
       /* Accumulated reward for current episode */
       float m_fEpisodeReward;
+
+      /* Collision counter for current episode */
+      int m_nCollisionCount;
+      int m_nMaxCollisionsPerEpisode;  // Max collisions before ending episode
+      int m_nConsecutiveCollisions;    // Track consecutive collision steps
+      bool m_bWasColliding;             // Was colliding in previous step
+
+      /* Original starting position for reset (used by loop function) */
+      CVector2 m_cOriginalPosition;
+      CQuaternion m_cOriginalOrientation;
 
       /*
        * Connect to the Python Q-Network server

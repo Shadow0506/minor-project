@@ -74,8 +74,8 @@ class QNetworkAgent:
     and performs learning updates.
     """
     
-    def __init__(self, state_size=28, action_size=4, learning_rate=0.001,
-                 gamma=0.99, epsilon=1.0, epsilon_min=0.01, epsilon_decay=0.995):
+    def __init__(self, state_size=28, action_size=4, learning_rate=0.0005,
+                 gamma=0.95, epsilon=1.0, epsilon_min=0.1, epsilon_decay=0.998):
         
         self.state_size = state_size
         self.action_size = action_size
@@ -84,6 +84,7 @@ class QNetworkAgent:
         self.epsilon_min = epsilon_min
         self.epsilon_decay = epsilon_decay
         self.learning_rate = learning_rate
+        self.episode_count = 0  # Track episodes for adaptive epsilon
         
         # Device (CPU or GPU)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -121,7 +122,7 @@ class QNetworkAgent:
         
     def select_action(self, state, robot_id):
         """
-        Select action using epsilon-greedy policy
+        Select action using epsilon-greedy policy with adaptive exploration
         
         Args:
             state: Current state vector
@@ -133,8 +134,13 @@ class QNetworkAgent:
         # Store current state
         self.current_states[robot_id] = state
         
+        # Adaptive epsilon based on episode count (slower decay for first 50 episodes)
+        effective_epsilon = self.epsilon
+        if self.episode_count < 50:
+            effective_epsilon = max(0.5, self.epsilon)  # Keep epsilon high during early learning
+        
         # Epsilon-greedy action selection
-        if np.random.rand() < self.epsilon:
+        if np.random.rand() < effective_epsilon:
             # Explore: random action
             action = np.random.randint(0, self.action_size)
         else:
@@ -167,7 +173,7 @@ class QNetworkAgent:
     
     def train(self):
         """
-        Train the Q-Network using experience replay
+        Train the Q-Network using experience replay with prioritization
         
         Returns:
             loss: Training loss (or None if not enough samples)
@@ -176,8 +182,32 @@ class QNetworkAgent:
         if len(self.replay_buffer) < self.batch_size:
             return None
         
-        # Sample batch from replay buffer
-        batch = self.replay_buffer.sample(self.batch_size)
+        # Sample batch from replay buffer with prioritization for positive rewards
+        all_samples = list(self.replay_buffer.buffer)
+        
+        # Separate positive and negative reward experiences
+        positive_samples = [s for s in all_samples if s[2] > 0]  # reward > 0
+        negative_samples = [s for s in all_samples if s[2] <= 0]
+        
+        # Sample with bias toward positive experiences (70% positive, 30% negative)
+        # This helps the network learn successful behaviors faster
+        batch = []
+        if len(positive_samples) > 0:
+            n_positive = min(int(self.batch_size * 0.7), len(positive_samples))
+            n_negative = self.batch_size - n_positive
+            batch.extend(random.sample(positive_samples, n_positive))
+            if n_negative > 0 and len(negative_samples) > 0:
+                batch.extend(random.sample(negative_samples, min(n_negative, len(negative_samples))))
+        else:
+            # Fall back to random sampling if no positive samples yet
+            batch = self.replay_buffer.sample(min(self.batch_size, len(all_samples)))
+        
+        # Ensure we have a full batch
+        while len(batch) < self.batch_size and len(all_samples) >= self.batch_size:
+            batch.extend(random.sample(all_samples, self.batch_size - len(batch)))
+        
+        if len(batch) < self.batch_size:
+            return None
         
         # Unpack batch
         states, actions, rewards, next_states, dones = zip(*batch)
@@ -203,6 +233,8 @@ class QNetworkAgent:
         # Optimize
         self.optimizer.zero_grad()
         loss.backward()
+        # Gradient clipping to prevent exploding gradients
+        torch.nn.utils.clip_grad_norm_(self.q_network.parameters(), 1.0)
         self.optimizer.step()
         
         # Update target network periodically
