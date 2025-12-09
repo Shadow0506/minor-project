@@ -74,6 +74,8 @@ namespace argos {
 
       LOG << "[Robot " << m_strRobotId << "] Initialized. Goal: (" 
           << m_cGoalPosition.GetX() << ", " << m_cGoalPosition.GetY() << ")" << std::endl;
+      LOG << "[Robot " << m_strRobotId << "] Velocity: " << m_fVelocity 
+          << " cm/s, Max steps: " << m_nMaxSteps << std::endl;
 
       // Initialize previous position
       const CCI_PositioningSensor::SReading& sReading = m_pcPositioning->GetReading();

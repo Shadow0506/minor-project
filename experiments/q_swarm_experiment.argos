@@ -37,20 +37,8 @@
         <footbot_proximity implementation="default" show_rays="true" />
         <positioning implementation="default" />
       </sensors>
-      <params>
-        <!-- Goal position (all robots share same goal) -->
-        <goal_x value="18.0" />
-        <goal_y value="18.0" />
-        
-        <!-- Movement velocity (cm/s for differential steering) -->
-        <velocity value="10.0" />
-        
-        <!-- Maximum steps per episode before reset -->
-        <max_steps value="500" />
-        
-        <!-- Maximum number of episodes to run -->
-        <max_episodes value="1000" />
-      </params>
+      <params goal_x="18.0" goal_y="18.0" velocity="15.0" max_steps="500" max_episodes="1000" />
+
     </q_swarm_controller>
 
   </controllers>
