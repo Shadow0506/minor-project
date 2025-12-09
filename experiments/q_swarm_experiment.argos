@@ -29,7 +29,7 @@
   <controllers>
 
     <q_swarm_controller id="qsc"
-                        library="controllers/q_swarm_controller/build/libq_swarm_controller">
+                        library="/home/shadow56/Desktop/minor-project/controllers/q_swarm_controller/build/libq_swarm_controller">
       <actuators>
         <differential_steering implementation="default" />
       </actuators>
@@ -65,30 +65,8 @@
            source="loop_functions"
            pixels_per_meter="50" />
 
-    <!-- Walls around the arena -->
-    <box id="wall_north" size="20, 0.1, 0.5" movable="false">
-      <body position="10, 20, 0" orientation="0, 0, 0" />
-    </box>
-    <box id="wall_south" size="20, 0.1, 0.5" movable="false">
-      <body position="10, 0, 0" orientation="0, 0, 0" />
-    </box>
-    <box id="wall_east" size="0.1, 20, 0.5" movable="false">
-      <body position="20, 10, 0" orientation="0, 0, 0" />
-    </box>
-    <box id="wall_west" size="0.1, 20, 0.5" movable="false">
-      <body position="0, 10, 0" orientation="0, 0, 0" />
-    </box>
-
-    <!-- Goal marker (visual indicator) -->
-    <box id="goal_marker" size="1.0, 1.0, 0.1" movable="false">
-      <body position="18, 18, 0" orientation="0, 0, 0" />
-      <leds medium="leds">
-        <led offset="0, 0, 0.11" anchor="origin" color="green" />
-      </leds>
-    </box>
-
     <!-- Place 4 FootBots in starting positions -->
-    <!-- Starting positions: (2,2), (2,4), (4,2), (4,4) -->
+    <!-- Starting positions: spread out to avoid initial collisions -->
     
     <foot-bot id="fb0">
       <body position="2, 2, 0" orientation="0, 0, 0" />
@@ -96,17 +74,17 @@
     </foot-bot>
 
     <foot-bot id="fb1">
-      <body position="2, 4, 0" orientation="0, 0, 0" />
+      <body position="2, 6, 0" orientation="0, 0, 0" />
       <controller config="qsc" />
     </foot-bot>
 
     <foot-bot id="fb2">
-      <body position="4, 2, 0" orientation="0, 0, 0" />
+      <body position="6, 2, 0" orientation="0, 0, 0" />
       <controller config="qsc" />
     </foot-bot>
 
     <foot-bot id="fb3">
-      <body position="4, 4, 0" orientation="0, 0, 0" />
+      <body position="6, 6, 0" orientation="0, 0, 0" />
       <controller config="qsc" />
     </foot-bot>
 
@@ -116,18 +94,7 @@
   <!-- * Physics engines * -->
   <!-- ******************* -->
   <physics_engines>
-    <dynamics2d id="dyn2d">
-      <boundaries>
-        <top height="1" />
-        <bottom height="0" />
-        <sides>
-          <vertex point="0, 0" />
-          <vertex point="0, 20" />
-          <vertex point="20, 20" />
-          <vertex point="20, 0" />
-        </sides>
-      </boundaries>
-    </dynamics2d>
+    <dynamics2d id="dyn2d" iterations="10" />
   </physics_engines>
 
   <!-- ********* -->
@@ -152,7 +119,6 @@
           <placement index="2" position="5, 5, 10" look_at="10, 10, 0" up="0, 0, 1" lens_focal_length="30" />
         </placements>
       </camera>
-      <user_functions label="q_learning_vis" />
     </qt-opengl>
   </visualization>
 

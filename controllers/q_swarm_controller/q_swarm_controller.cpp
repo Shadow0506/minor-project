@@ -60,8 +60,12 @@ namespace argos {
       }
 
       // Read goal position from configuration (default to 18, 18)
-      GetNodeAttributeOrDefault(t_node, "goal_x", m_cGoalPosition.SetX(18.0f), m_cGoalPosition.GetX());
-      GetNodeAttributeOrDefault(t_node, "goal_y", m_cGoalPosition.SetY(18.0f), m_cGoalPosition.GetY());
+      Real fGoalX = 18.0f;
+      Real fGoalY = 18.0f;
+      GetNodeAttributeOrDefault(t_node, "goal_x", fGoalX, fGoalX);
+      GetNodeAttributeOrDefault(t_node, "goal_y", fGoalY, fGoalY);
+      m_cGoalPosition.SetX(fGoalX);
+      m_cGoalPosition.SetY(fGoalY);
 
       // Read other parameters
       GetNodeAttributeOrDefault(t_node, "velocity", m_fVelocity, m_fVelocity);
@@ -341,20 +345,22 @@ namespace argos {
       CVector2 currentPos(sReading.Position.GetX(), sReading.Position.GetY());
 
       // Check if robot moved very little (stuck/collision)
+      // Skip this check for the first few steps to allow movement initialization
       float distanceMoved = (currentPos - m_cPreviousPosition).Length();
       
       // Update previous position
       m_cPreviousPosition = currentPos;
 
-      // If moved less than threshold, likely collision
-      if (distanceMoved < m_fCollisionThreshold) {
+      // Only check for collision based on movement after a few steps
+      if (m_nSteps > 5 && distanceMoved < m_fCollisionThreshold) {
          return true;
       }
 
       // Also check proximity sensors for very close obstacles
+      // Lowered threshold to reduce false positives - only trigger on actual contact
       const CCI_FootBotProximitySensor::TReadings& tReadings = m_pcProximity->GetReadings();
       for (size_t i = 0; i < tReadings.size(); ++i) {
-         if (tReadings[i].Value > 0.9f) {  // Very close obstacle
+         if (tReadings[i].Value > 0.99f) {  // Only on very close/actual contact
             return true;
          }
       }

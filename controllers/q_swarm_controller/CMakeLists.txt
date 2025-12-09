@@ -7,14 +7,18 @@ project(q_swarm_controller)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Find ARGoS package
-find_package(PkgConfig)
-pkg_check_modules(ARGOS REQUIRED argos3_simulator)
+# Find ARGoS manually (for systems without pkg-config files)
+set(ARGOS_INCLUDE_DIRS /usr/include/argos3)
+set(ARGOS_LIBRARY_DIRS /usr/lib/argos3)
+
+# Add Lua include directory
+set(LUA_INCLUDE_DIR /usr/include/lua5.3)
 
 # Set include directories
 include_directories(
   ${CMAKE_SOURCE_DIR}
   ${ARGOS_INCLUDE_DIRS}
+  ${LUA_INCLUDE_DIR}
 )
 
 # Link directories
@@ -22,9 +26,8 @@ link_directories(
   ${ARGOS_LIBRARY_DIRS}
 )
 
-# Set compiler flags
-add_definitions(${ARGOS_CFLAGS_OTHER})
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ARGOS_CFLAGS_OTHER}")
+# Set compiler flags (removed ARGOS_CFLAGS_OTHER since we're not using pkg-config)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
 
 # Source files
 set(CONTROLLER_SOURCES
@@ -37,7 +40,7 @@ add_library(q_swarm_controller SHARED ${CONTROLLER_SOURCES})
 
 # Link ARGoS libraries
 target_link_libraries(q_swarm_controller
-  ${ARGOS_LIBRARIES}
+  argos3core_simulator
   argos3plugin_simulator_footbot
   argos3plugin_simulator_genericrobot
 )
