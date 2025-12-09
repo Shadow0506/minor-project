@@ -37,7 +37,7 @@
         <footbot_proximity implementation="default" show_rays="true" />
         <positioning implementation="default" />
       </sensors>
-      <params goal_x="18.0" goal_y="18.0" velocity="15.0" max_steps="500" max_episodes="1000" />
+      <params goal_x="18.0" goal_y="18.0" velocity="15.0" max_steps="1000" max_episodes="1000" />
 
     </q_swarm_controller>
 
@@ -53,8 +53,71 @@
            source="loop_functions"
            pixels_per_meter="50" />
 
-    <!-- Place 4 FootBots in starting positions -->
-    <!-- Starting positions: spread out to avoid initial collisions -->
+    <!-- Arena walls (outer boundary) -->
+    <box id="wall_north" size="20, 0.1, 0.5" movable="false">
+      <body position="10, 20, 0" orientation="0, 0, 0" />
+    </box>
+    <box id="wall_south" size="20, 0.1, 0.5" movable="false">
+      <body position="10, 0, 0" orientation="0, 0, 0" />
+    </box>
+    <box id="wall_east" size="0.1, 20, 0.5" movable="false">
+      <body position="20, 10, 0" orientation="0, 0, 0" />
+    </box>
+    <box id="wall_west" size="0.1, 20, 0.5" movable="false">
+      <body position="0, 10, 0" orientation="0, 0, 0" />
+    </box>
+
+    <!-- War zone obstacles - scattered debris and barriers -->
+    
+    <!-- Central barrier (simulating destroyed wall) -->
+    <box id="barrier_1" size="4, 0.3, 0.5" movable="false">
+      <body position="10, 10, 0" orientation="0, 0, 0.3" />
+    </box>
+    
+    <!-- Scattered obstacles (debris, rubble) -->
+    <box id="obstacle_1" size="1.5, 1.5, 0.5" movable="false">
+      <body position="8, 6, 0" orientation="0, 0, 0.5" />
+    </box>
+    
+    <box id="obstacle_2" size="1, 2, 0.5" movable="false">
+      <body position="12, 8, 0" orientation="0, 0, 0.8" />
+    </box>
+    
+    <box id="obstacle_3" size="2, 1, 0.5" movable="false">
+      <body position="6, 12, 0" orientation="0, 0, 0.2" />
+    </box>
+    
+    <box id="obstacle_4" size="1.5, 1.5, 0.5" movable="false">
+      <body position="14, 14, 0" orientation="0, 0, 0.6" />
+    </box>
+    
+    <!-- Bunker-like structures -->
+    <box id="bunker_wall_1" size="3, 0.3, 0.5" movable="false">
+      <body position="5, 15, 0" orientation="0, 0, 0" />
+    </box>
+    
+    <box id="bunker_wall_2" size="0.3, 2, 0.5" movable="false">
+      <body position="3.5, 15.5, 0" orientation="0, 0, 0" />
+    </box>
+    
+    <!-- Additional barriers creating maze-like paths -->
+    <box id="barrier_2" size="2.5, 0.3, 0.5" movable="false">
+      <body position="15, 6, 0" orientation="0, 0, 1.2" />
+    </box>
+    
+    <box id="barrier_3" size="3, 0.3, 0.5" movable="false">
+      <body position="8, 16, 0" orientation="0, 0, 0.5" />
+    </box>
+
+    <!-- GOAL MARKER - Visual destination point -->
+    <cylinder id="goal_marker" radius="0.5" height="0.8" movable="false" mass="0.1">
+      <body position="18, 18, 0" orientation="0, 0, 0" />
+      <leds medium="leds">
+        <led offset="0, 0, 0.4" anchor="origin" color="green" />
+      </leds>
+    </cylinder>
+
+    <!-- Place 4 FootBots in starting positions (spread out in safe zones) -->
     
     <foot-bot id="fb0">
       <body position="2, 2, 0" orientation="0, 0, 0" />

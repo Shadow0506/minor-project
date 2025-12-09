@@ -314,20 +314,64 @@ namespace argos {
    /****************************************/
 
    float QSwarmController::CalculateReward(bool& done) {
-      float reward = -0.1f;  // Small penalty per step (encourages efficiency)
+      float reward = 0.0f;
       done = false;
 
-      // Check if reached goal
+      // Get current position
+      const CCI_PositioningSensor::SReading& sReading = m_pcPositioning->GetReading();
+      CVector2 currentPos(sReading.Position.GetX(), sReading.Position.GetY());
+      
+      // Calculate distance to goal
+      float currentDistance = (currentPos - m_cGoalPosition).Length();
+      
+      // Check if reached goal (HIGHEST PRIORITY)
       if (ReachedGoal()) {
-         reward = 10.0f;
+         reward = 100.0f;  // HUGE reward for reaching goal
          done = true;
-         LOG << "[Robot " << m_strRobotId << "] GOAL REACHED!" << std::endl;
+         LOG << "[Robot " << m_strRobotId << "] *** GOAL REACHED! ***" << std::endl;
+         return reward;
       }
-      // Check for collision
-      else if (DetectCollision()) {
-         reward = -5.0f;
+      
+      // Check for collision (NEGATIVE OUTCOME)
+      if (DetectCollision()) {
+         reward = -10.0f;  // Strong penalty for collision
          done = true;
          LOG << "[Robot " << m_strRobotId << "] COLLISION DETECTED!" << std::endl;
+         return reward;
+      }
+
+      // STRATEGIC MOVEMENT REWARDS:
+      
+      // 1. Progress toward goal (reward for moving closer)
+      float previousDistance = (m_cPreviousPosition - m_cGoalPosition).Length();
+      float progressReward = (previousDistance - currentDistance) * 2.0f;  // Scale up progress
+      reward += progressReward;
+      
+      // 2. Proximity bonus (encourage getting closer to goal)
+      float proximityBonus = 0.0f;
+      if (currentDistance < 5.0f) {
+         proximityBonus = 0.5f;  // Close to goal
+      } else if (currentDistance < 10.0f) {
+         proximityBonus = 0.2f;  // Medium distance
+      }
+      reward += proximityBonus;
+      
+      // 3. Small time penalty (encourage efficiency, but less harsh)
+      reward -= 0.01f;
+      
+      // 4. Obstacle avoidance bonus (reward safe navigation)
+      const CCI_FootBotProximitySensor::TReadings& tReadings = m_pcProximity->GetReadings();
+      bool nearObstacle = false;
+      for (size_t i = 0; i < tReadings.size(); ++i) {
+         if (tReadings[i].Value > 0.5f) {
+            nearObstacle = true;
+            break;
+         }
+      }
+      
+      // Reward for safely navigating near obstacles
+      if (nearObstacle && progressReward > 0) {
+         reward += 0.1f;  // Bonus for making progress while avoiding obstacles
       }
 
       return reward;
