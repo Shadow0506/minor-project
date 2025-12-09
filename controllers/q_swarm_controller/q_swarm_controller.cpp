@@ -324,6 +324,40 @@ namespace argos {
       // Calculate distance to goal
       float currentDistance = (currentPos - m_cGoalPosition).Length();
       
+      // DYNAMIC SWARM COHESION CHECK
+      // The swarm center moves along the path from start (4,4) to goal (18,18)
+      // This encourages robots to move together toward the goal
+      CVector2 startPosition(4.0f, 4.0f);
+      CVector2 pathDirection = m_cGoalPosition - startPosition;
+      pathDirection.Normalize();
+      
+      // Expected swarm center based on average progress (simplified: use this robot's progress)
+      float totalPathLength = (m_cGoalPosition - startPosition).Length();
+      float currentProgress = totalPathLength - currentDistance;  // How far along path
+      CVector2 expectedSwarmCenter = startPosition + (pathDirection * currentProgress);
+      
+      // Allow some deviation from the moving swarm center
+      float maxSwarmDeviation = 5.0f;  // Robots can be 5m apart from each other
+      float deviationFromSwarm = (currentPos - expectedSwarmCenter).Length();
+      
+      if (deviationFromSwarm > maxSwarmDeviation && m_nSteps > 10) {
+         // Penalty for straying too far from swarm formation
+         reward = -2.0f;
+         done = true;
+         LOG << "[Robot " << m_strRobotId << "] STRAYED FROM SWARM! Deviation: " 
+             << deviationFromSwarm << "m" << std::endl;
+         return reward;
+      }
+      
+      // BOUNDARY CHECK - Penalize going out of bounds
+      if (currentPos.GetX() < 1.0f || currentPos.GetX() > 19.0f ||
+          currentPos.GetY() < 1.0f || currentPos.GetY() > 19.0f) {
+         reward = -5.0f;
+         done = true;
+         LOG << "[Robot " << m_strRobotId << "] OUT OF BOUNDS!" << std::endl;
+         return reward;
+      }
+      
       // Check if reached goal (HIGHEST PRIORITY)
       if (ReachedGoal()) {
          reward = 100.0f;  // HUGE reward for reaching goal
@@ -332,8 +366,8 @@ namespace argos {
          return reward;
       }
       
-      // Check for collision (NEGATIVE OUTCOME)
-      if (DetectCollision()) {
+      // Check for collision (NEGATIVE OUTCOME) - but only after a few steps
+      if (m_nSteps > 3 && DetectCollision()) {
          reward = -10.0f;  // Strong penalty for collision
          done = true;
          LOG << "[Robot " << m_strRobotId << "] COLLISION DETECTED!" << std::endl;
@@ -342,24 +376,40 @@ namespace argos {
 
       // STRATEGIC MOVEMENT REWARDS:
       
-      // 1. Progress toward goal (reward for moving closer)
+      // 1. STRONG Progress toward goal (PRIMARY OBJECTIVE)
       float previousDistance = (m_cPreviousPosition - m_cGoalPosition).Length();
-      float progressReward = (previousDistance - currentDistance) * 2.0f;  // Scale up progress
+      float progressReward = (previousDistance - currentDistance) * 5.0f;  // INCREASED: Strong incentive to move toward goal
       reward += progressReward;
       
-      // 2. Proximity bonus (encourage getting closer to goal)
+      // 2. Swarm cohesion bonus (reward staying together while progressing)
+      float cohesionBonus = 0.0f;
+      if (deviationFromSwarm < 2.0f) {
+         cohesionBonus = 0.4f;  // Tight formation
+      } else if (deviationFromSwarm < 4.0f) {
+         cohesionBonus = 0.2f;  // Good formation
+      }
+      reward += cohesionBonus;
+      
+      // 3. Proximity bonus (encourage getting closer to goal)
       float proximityBonus = 0.0f;
       if (currentDistance < 5.0f) {
-         proximityBonus = 0.5f;  // Close to goal
+         proximityBonus = 1.0f;  // Very close to goal - INCREASED
       } else if (currentDistance < 10.0f) {
-         proximityBonus = 0.2f;  // Medium distance
+         proximityBonus = 0.5f;  // Medium distance - INCREASED
+      } else if (currentDistance < 15.0f) {
+         proximityBonus = 0.2f;  // Making progress
       }
       reward += proximityBonus;
       
-      // 3. Small time penalty (encourage efficiency, but less harsh)
-      reward -= 0.01f;
+      // 4. Forward movement bonus (encourage any movement toward goal)
+      if (progressReward > 0.01f) {
+         reward += 0.3f;  // Bonus for making forward progress
+      }
       
-      // 4. Obstacle avoidance bonus (reward safe navigation)
+      // 5. Very small time penalty (don't discourage exploration)
+      reward -= 0.005f;
+      
+      // 6. Obstacle avoidance bonus (reward safe navigation)
       const CCI_FootBotProximitySensor::TReadings& tReadings = m_pcProximity->GetReadings();
       bool nearObstacle = false;
       for (size_t i = 0; i < tReadings.size(); ++i) {
@@ -369,9 +419,9 @@ namespace argos {
          }
       }
       
-      // Reward for safely navigating near obstacles
+      // Reward for safely navigating near obstacles while making progress
       if (nearObstacle && progressReward > 0) {
-         reward += 0.1f;  // Bonus for making progress while avoiding obstacles
+         reward += 0.2f;  // Bonus for making progress while avoiding obstacles
       }
 
       return reward;

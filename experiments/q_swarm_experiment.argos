@@ -67,78 +67,102 @@
       <body position="0, 10, 0" orientation="0, 0, 0" />
     </box>
 
-    <!-- War zone obstacles - scattered debris and barriers -->
+    <!-- MAZE STRUCTURE - Creating challenging paths that require swarm coordination -->
     
-    <!-- Central barrier (simulating destroyed wall) -->
-    <box id="barrier_1" size="4, 0.3, 0.5" movable="false">
-      <body position="10, 10, 0" orientation="0, 0, 0.3" />
+    <!-- Vertical maze walls -->
+    <box id="maze_v1" size="0.3, 6, 0.5" movable="false">
+      <body position="8, 7, 0" orientation="0, 0, 0" />
     </box>
     
-    <!-- Scattered obstacles (debris, rubble) -->
-    <box id="obstacle_1" size="1.5, 1.5, 0.5" movable="false">
-      <body position="8, 6, 0" orientation="0, 0, 0.5" />
+    <box id="maze_v2" size="0.3, 5, 0.5" movable="false">
+      <body position="12, 8.5, 0" orientation="0, 0, 0" />
     </box>
     
-    <box id="obstacle_2" size="1, 2, 0.5" movable="false">
-      <body position="12, 8, 0" orientation="0, 0, 0.8" />
+    <box id="maze_v3" size="0.3, 7, 0.5" movable="false">
+      <body position="16, 6.5, 0" orientation="0, 0, 0" />
     </box>
     
-    <box id="obstacle_3" size="2, 1, 0.5" movable="false">
-      <body position="6, 12, 0" orientation="0, 0, 0.2" />
+    <!-- Horizontal maze walls -->
+    <box id="maze_h1" size="6, 0.3, 0.5" movable="false">
+      <body position="7, 11, 0" orientation="0, 0, 0" />
     </box>
     
-    <box id="obstacle_4" size="1.5, 1.5, 0.5" movable="false">
-      <body position="14, 14, 0" orientation="0, 0, 0.6" />
+    <box id="maze_h2" size="5, 0.3, 0.5" movable="false">
+      <body position="11.5, 14, 0" orientation="0, 0, 0" />
     </box>
     
-    <!-- Bunker-like structures -->
-    <box id="bunker_wall_1" size="3, 0.3, 0.5" movable="false">
-      <body position="5, 15, 0" orientation="0, 0, 0" />
+    <box id="maze_h3" size="4, 0.3, 0.5" movable="false">
+      <body position="14, 7, 0" orientation="0, 0, 0" />
     </box>
     
-    <box id="bunker_wall_2" size="0.3, 2, 0.5" movable="false">
-      <body position="3.5, 15.5, 0" orientation="0, 0, 0" />
+    <!-- L-shaped obstacles creating narrow passages -->
+    <box id="corner_wall_1a" size="3, 0.3, 0.5" movable="false">
+      <body position="9.5, 15, 0" orientation="0, 0, 0" />
+    </box>
+    <box id="corner_wall_1b" size="0.3, 2, 0.5" movable="false">
+      <body position="11, 14, 0" orientation="0, 0, 0" />
     </box>
     
-    <!-- Additional barriers creating maze-like paths -->
-    <box id="barrier_2" size="2.5, 0.3, 0.5" movable="false">
-      <body position="15, 6, 0" orientation="0, 0, 1.2" />
+    <box id="corner_wall_2a" size="2.5, 0.3, 0.5" movable="false">
+      <body position="5.75, 9, 0" orientation="0, 0, 0" />
+    </box>
+    <box id="corner_wall_2b" size="0.3, 2, 0.5" movable="false">
+      <body position="7, 8, 0" orientation="0, 0, 0" />
     </box>
     
-    <box id="barrier_3" size="3, 0.3, 0.5" movable="false">
-      <body position="8, 16, 0" orientation="0, 0, 0.5" />
+    <!-- Scattered obstacles in key positions -->
+    <box id="obstacle_1" size="1.2, 1.2, 0.5" movable="false">
+      <body position="10, 10, 0" orientation="0, 0, 0.5" />
+    </box>
+    
+    <box id="obstacle_2" size="1.5, 1, 0.5" movable="false">
+      <body position="14, 12, 0" orientation="0, 0, 0.3" />
+    </box>
+    
+    <box id="obstacle_3" size="1, 1.5, 0.5" movable="false">
+      <body position="6, 13, 0" orientation="0, 0, 0.8" />
+    </box>
+    
+    <!-- Narrow corridor obstacles -->
+    <box id="corridor_block_1" size="1, 0.3, 0.5" movable="false">
+      <body position="11, 6, 0" orientation="0, 0, 0" />
+    </box>
+    
+    <box id="corridor_block_2" size="0.3, 1.5, 0.5" movable="false">
+      <body position="15, 11, 0" orientation="0, 0, 0" />
     </box>
 
-    <!-- GOAL MARKER - Visual destination point -->
-    <cylinder id="goal_marker" radius="0.5" height="0.8" movable="false" mass="0.1">
+    <!-- GOAL MARKER - Visual destination point in RED -->
+    <cylinder id="goal_marker" radius="0.6" height="0.8" movable="false" mass="0.1">
       <body position="18, 18, 0" orientation="0, 0, 0" />
       <leds medium="leds">
-        <led offset="0, 0, 0.4" anchor="origin" color="green" />
+        <led offset="0, 0, 0.4" anchor="origin" color="red" intensity="2.0" />
       </leds>
     </cylinder>
 
-    <!-- Place 4 FootBots in starting positions (spread out in safe zones) -->
+    <!-- Place 4 FootBots in CLOSER starting positions for better swarm coordination -->
+    <!-- Starting in a tight formation at (4, 4) area -->
     
     <foot-bot id="fb0">
-      <body position="2, 2, 0" orientation="0, 0, 0" />
+      <body position="3.5, 3.5, 0" orientation="0.785, 0, 0" />
       <controller config="qsc" />
       <dynamics2d />
     </foot-bot>
 
     <foot-bot id="fb1">
-      <body position="2, 6, 0" orientation="0, 0, 0" />
+      <body position="4.5, 3.5, 0" orientation="0.785, 0, 0" />
       <controller config="qsc" />
       <dynamics2d />
     </foot-bot>
 
     <foot-bot id="fb2">
-      <body position="6, 2, 0" orientation="0, 0, 0" />
+      <body position="3.5, 4.5, 0" orientation="0.785, 0, 0" />
       <controller config="qsc" />
       <dynamics2d />
     </foot-bot>
 
     <foot-bot id="fb3">
-      <body position="6, 6, 0" orientation="0, 0, 0" />
+      <body position="4.5, 4.5, 0" orientation="0.785, 0, 0" />
       <controller config="qsc" />
       <dynamics2d />
     </foot-bot>
