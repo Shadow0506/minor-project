@@ -29,7 +29,7 @@ namespace argos {
       m_nSocket(-1),
       m_bConnected(false),
       m_fVelocity(0.1f),
-      m_fCollisionThreshold(0.01f),
+      m_fCollisionThreshold(0.001f),  // 1mm - much lower to avoid false positives
       m_fGoalThreshold(0.5f),
       m_bEpisodeDone(false),
       m_fEpisodeReward(0.0f),
@@ -299,6 +299,12 @@ namespace argos {
             rightSpeed = m_fVelocity;
       }
 
+      // Debug: Log action and velocities
+      if (m_nSteps < 3) {
+         LOG << "[Robot " << m_strRobotId << "] Action: " << action 
+             << ", Left: " << leftSpeed << ", Right: " << rightSpeed << std::endl;
+      }
+
       m_pcWheels->SetLinearVelocity(leftSpeed, rightSpeed);
    }
 
@@ -340,27 +346,15 @@ namespace argos {
    /****************************************/
 
    bool QSwarmController::DetectCollision() {
-      // Get current position
-      const CCI_PositioningSensor::SReading& sReading = m_pcPositioning->GetReading();
-      CVector2 currentPos(sReading.Position.GetX(), sReading.Position.GetY());
-
-      // Check if robot moved very little (stuck/collision)
-      // Skip this check for the first few steps to allow movement initialization
-      float distanceMoved = (currentPos - m_cPreviousPosition).Length();
-      
-      // Update previous position
-      m_cPreviousPosition = currentPos;
-
-      // Only check for collision based on movement after a few steps
-      if (m_nSteps > 5 && distanceMoved < m_fCollisionThreshold) {
-         return true;
-      }
-
-      // Also check proximity sensors for very close obstacles
-      // Lowered threshold to reduce false positives - only trigger on actual contact
+      // Check proximity sensors for collisions
+      // This is the primary and only collision detection method
+      // We rely on proximity sensors rather than movement because:
+      // - Robots can legitimately stop (action 3)
+      // - Robots can turn in place (actions 1, 2) with minimal forward movement
       const CCI_FootBotProximitySensor::TReadings& tReadings = m_pcProximity->GetReadings();
       for (size_t i = 0; i < tReadings.size(); ++i) {
-         if (tReadings[i].Value > 0.99f) {  // Only on very close/actual contact
+         // Value > 0.9 indicates very close proximity or contact
+         if (tReadings[i].Value > 0.9f) {
             return true;
          }
       }
@@ -380,8 +374,7 @@ namespace argos {
 
       SendMessage(oss.str());
 
-      // Wait for acknowledgment
-      ReceiveMessage();
+      // No acknowledgment needed - server processes asynchronously
    }
 
    /****************************************/

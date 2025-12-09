@@ -89,20 +89,31 @@ class QServer:
     
     def handle_client(self, client_socket):
         """Handle communication with a single robot controller"""
+        buffer = ""  # Buffer for incomplete messages
+        
         try:
             while True:
-                # Receive message
-                data = client_socket.recv(4096).decode('utf-8').strip()
+                # Receive data
+                data = client_socket.recv(4096).decode('utf-8')
                 
                 if not data:
                     break
                 
-                # Parse and handle message
-                response = self.process_message(data)
+                # Add to buffer
+                buffer += data
                 
-                # Send response
-                if response:
-                    client_socket.send((response + "\n").encode('utf-8'))
+                # Process all complete messages (ended with newline)
+                while '\n' in buffer:
+                    line, buffer = buffer.split('\n', 1)
+                    line = line.strip()
+                    
+                    if line:
+                        # Parse and handle message
+                        response = self.process_message(line)
+                        
+                        # Send response
+                        if response:
+                            client_socket.send((response + "\n").encode('utf-8'))
         
         except Exception as e:
             print(f"[ERROR] Client handler error: {e}")

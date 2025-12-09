@@ -42,8 +42,8 @@
         <goal_x value="18.0" />
         <goal_y value="18.0" />
         
-        <!-- Movement velocity (m/s) -->
-        <velocity value="0.1" />
+        <!-- Movement velocity (cm/s for differential steering) -->
+        <velocity value="10.0" />
         
         <!-- Maximum steps per episode before reset -->
         <max_steps value="500" />
@@ -71,21 +71,25 @@
     <foot-bot id="fb0">
       <body position="2, 2, 0" orientation="0, 0, 0" />
       <controller config="qsc" />
+      <dynamics2d />
     </foot-bot>
 
     <foot-bot id="fb1">
       <body position="2, 6, 0" orientation="0, 0, 0" />
       <controller config="qsc" />
+      <dynamics2d />
     </foot-bot>
 
     <foot-bot id="fb2">
       <body position="6, 2, 0" orientation="0, 0, 0" />
       <controller config="qsc" />
+      <dynamics2d />
     </foot-bot>
 
     <foot-bot id="fb3">
       <body position="6, 6, 0" orientation="0, 0, 0" />
       <controller config="qsc" />
+      <dynamics2d />
     </foot-bot>
 
   </arena>
