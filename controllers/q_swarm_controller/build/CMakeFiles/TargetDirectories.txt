@@ -1,7 +1,0 @@
-/home/shadow56/Desktop/minor-project/controllers/q_swarm_controller/build/CMakeFiles/q_swarm_controller.dir
-/home/shadow56/Desktop/minor-project/controllers/q_swarm_controller/build/CMakeFiles/edit_cache.dir
-/home/shadow56/Desktop/minor-project/controllers/q_swarm_controller/build/CMakeFiles/rebuild_cache.dir
-/home/shadow56/Desktop/minor-project/controllers/q_swarm_controller/build/CMakeFiles/list_install_components.dir
-/home/shadow56/Desktop/minor-project/controllers/q_swarm_controller/build/CMakeFiles/install.dir
-/home/shadow56/Desktop/minor-project/controllers/q_swarm_controller/build/CMakeFiles/install/local.dir
-/home/shadow56/Desktop/minor-project/controllers/q_swarm_controller/build/CMakeFiles/install/strip.dir
