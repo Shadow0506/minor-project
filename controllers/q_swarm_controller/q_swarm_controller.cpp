@@ -326,17 +326,15 @@ namespace argos {
          // Turn away from the side with more obstacle
          if (leftSum > rightSum) {
             // Obstacle on left, turn right while backing up
-            leftSpeed = -m_fVelocity * 0.3f;
-            rightSpeed = m_fVelocity * 0.5f;
+            leftSpeed = -m_fVelocity * 0.5f;  // NEGATIVE = backup
+            rightSpeed = -m_fVelocity * 0.3f; // Less negative = turns right while backing
          } else {
             // Obstacle on right (or equal), turn left while backing up
-            leftSpeed = m_fVelocity * 0.5f;
-            rightSpeed = -m_fVelocity * 0.3f;
+            leftSpeed = -m_fVelocity * 0.3f;  // Less negative = turns left while backing
+            rightSpeed = -m_fVelocity * 0.5f; // NEGATIVE = backup
          }
          
-         if (m_nSteps % 20 == 0) {
-            LOG << "[Robot " << m_strRobotId << "] COLLISION RECOVERY: Backing up and turning" << std::endl;
-         }
+         LOG << "[Robot " << m_strRobotId << "] COLLISION! BACKING UP (L:" << leftSpeed << " R:" << rightSpeed << ")" << std::endl;
       } else {
          // Normal action execution
          switch (action) {
@@ -570,9 +568,9 @@ namespace argos {
       }
       
       for (size_t i = 0; i < tReadings.size(); ++i) {
-         // Value > 0.85 indicates very close proximity or contact
-         // Raised from 0.7 to be more strict - only count real hard collisions
-         if (tReadings[i].Value > 0.85f) {
+         // Value > 0.5 indicates close proximity - need to avoid/recover
+         // Lowered threshold to catch collisions before they happen
+         if (tReadings[i].Value > 0.5f) {
             return true;
          }
       }

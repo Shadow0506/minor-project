@@ -75,7 +75,7 @@ class QNetworkAgent:
     """
     
     def __init__(self, state_size=28, action_size=4, learning_rate=0.0005,
-                 gamma=0.95, epsilon=1.0, epsilon_min=0.1, epsilon_decay=0.998):
+                 gamma=0.95, epsilon=1.0, epsilon_min=0.15, epsilon_decay=0.99):
         
         self.state_size = state_size
         self.action_size = action_size
@@ -122,7 +122,7 @@ class QNetworkAgent:
         
     def select_action(self, state, robot_id):
         """
-        Select action using epsilon-greedy policy with adaptive exploration
+        Select action using epsilon-greedy policy with obstacle awareness
         
         Args:
             state: Current state vector
@@ -134,21 +134,55 @@ class QNetworkAgent:
         # Store current state
         self.current_states[robot_id] = state
         
-        # Adaptive epsilon based on episode count (slower decay for first 50 episodes)
+        # Check if robot is near obstacle (proximity sensors in state)
+        # State format: [x, y, goal_x, goal_y, prox0, ..., prox23]
+        proximity_sensors = state[4:]  # Last 24 values are proximity sensors
+        max_proximity = max(proximity_sensors)
+        
+        # If very close to obstacle, force avoidance behavior
+        if max_proximity > 0.6:
+            # Emergency avoidance: choose turn action (not forward)
+            # Find which side has less obstacle
+            left_sensors = proximity_sensors[:12]
+            right_sensors = proximity_sensors[12:]
+            left_avg = sum(left_sensors) / len(left_sensors)
+            right_avg = sum(right_sensors) / len(right_sensors)
+            
+            # Turn away from obstacles
+            if left_avg > right_avg:
+                action = 2  # Turn right (away from left obstacle)
+            else:
+                action = 1  # Turn left (away from right obstacle)
+            
+            self.current_actions[robot_id] = action
+            return action
+        
+        # Adaptive epsilon based on episode count
         effective_epsilon = self.epsilon
-        if self.episode_count < 50:
-            effective_epsilon = max(0.5, self.epsilon)  # Keep epsilon high during early learning
+        if self.episode_count < 30:
+            effective_epsilon = max(0.5, self.epsilon)  # Keep high early
         
         # Epsilon-greedy action selection
         if np.random.rand() < effective_epsilon:
-            # Explore: random action
-            action = np.random.randint(0, self.action_size)
+            # Explore: random action, but avoid forward if obstacle ahead
+            if max_proximity > 0.4:
+                # Don't move forward into obstacle
+                action = np.random.choice([1, 2, 3])  # Only turn or stop
+            else:
+                action = np.random.randint(0, self.action_size)
         else:
             # Exploit: best action from Q-network
             state_tensor = torch.FloatTensor(state).unsqueeze(0).to(self.device)
             with torch.no_grad():
                 q_values = self.q_network(state_tensor)
-            action = q_values.argmax().item()
+            
+            # If obstacle ahead, mask out forward action
+            if max_proximity > 0.4:
+                q_values_np = q_values.cpu().numpy()[0]
+                q_values_np[0] = -1000  # Make forward action very unattractive
+                action = np.argmax(q_values_np)
+            else:
+                action = q_values.argmax().item()
         
         # Store current action
         self.current_actions[robot_id] = action
