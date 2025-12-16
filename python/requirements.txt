@@ -1,3 +1,7 @@
+# Core dependencies for D3Q-Network
 torch>=2.0.0
 numpy>=1.21.0
 matplotlib>=3.5.0
+
+# Optional: for better performance
+# torch-cuda-toolkit if using GPU support

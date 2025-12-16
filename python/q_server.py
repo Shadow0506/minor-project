@@ -1,8 +1,8 @@
 """
-Q-Network Server
+D3Q-Network Server (Dueling Double Deep Q-Network)
 
 This script runs a socket server that communicates with the ARGoS
-C++ controllers. It receives states, selects actions using the Q-Network,
+C++ controllers. It receives states, selects actions using the D3Q-Network,
 and performs learning updates based on rewards.
 
 Protocol:
@@ -17,7 +17,7 @@ import threading
 import time
 import numpy as np
 import os
-from q_network import QNetworkAgent
+from d3q_network import D3QAgent
 
 
 class QServer:
@@ -26,8 +26,8 @@ class QServer:
         self.port = port
         self.server_socket = None
         
-        # Initialize Q-Network agent
-        self.agent = QNetworkAgent(
+        # Initialize D3Q Agent
+        self.agent = D3QAgent(
             state_size=28,  # 4 (position + goal) + 24 (proximity sensors)
             action_size=4,   # forward, left, right, stop
             learning_rate=0.001,
@@ -51,7 +51,7 @@ class QServer:
         os.makedirs(self.model_dir, exist_ok=True)
         
         # Load existing model if available
-        model_path = os.path.join(self.model_dir, "q_network_latest.pth")
+        model_path = os.path.join(self.model_dir, "d3q_network_latest.pth")
         self.agent.load_model(model_path)
         
     def start(self):
@@ -62,7 +62,7 @@ class QServer:
         self.server_socket.listen(5)
         
         print("=" * 50)
-        print("=== Q-Learning Server Started ===")
+        print("=== D3Q-Learning Server Started ===")
         print(f"Listening on {self.host}:{self.port}")
         print("=" * 50)
         print("Waiting for ARGoS to connect...\n")
@@ -259,16 +259,16 @@ class QServer:
     
     def save_model(self):
         """Save the current model"""
-        filepath = os.path.join(self.model_dir, f"q_network_episode_{self.episode_count}.pth")
+        filepath = os.path.join(self.model_dir, f"d3q_network_episode_{self.episode_count}.pth")
         self.agent.save_model(filepath)
         
         # Also save as latest
-        latest_path = os.path.join(self.model_dir, "q_network_latest.pth")
+        latest_path = os.path.join(self.model_dir, "d3q_network_latest.pth")
         self.agent.save_model(latest_path)
     
     def save_final_model(self):
         """Save the final model and statistics"""
-        final_path = os.path.join(self.model_dir, "q_network_final.pth")
+        final_path = os.path.join(self.model_dir, "d3q_network_final.pth")
         self.agent.save_model(final_path)
         
         # Save training curve
@@ -284,7 +284,7 @@ class QServer:
             'final_epsilon': self.agent.epsilon
         }
         
-        filepath = os.path.join(self.model_dir, "training_data.json")
+        filepath = os.path.join(self.model_dir, "d3q_training_data.json")
         with open(filepath, 'w') as f:
             json.dump(curve_data, f, indent=2)
         
@@ -295,7 +295,7 @@ class QServer:
         stats = self.agent.get_statistics()
         
         print("\n" + "=" * 60)
-        print(f"STATISTICS (Episode {self.episode_count})")
+        print(f"D3Q STATISTICS (Episode {self.episode_count})")
         print("=" * 60)
         print(f"Total Steps: {self.total_steps}")
         print(f"Epsilon: {stats['epsilon']:.4f}")

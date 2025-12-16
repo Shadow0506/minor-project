@@ -2,7 +2,7 @@
 Visualization and Analysis Tools
 
 This script provides tools to visualize training progress
-and analyze the learned Q-Network behavior.
+and analyze the learned D3Q-Network behavior.
 """
 
 import json
@@ -11,7 +11,7 @@ import numpy as np
 import os
 
 
-def plot_training_curve(data_file="../models/training_data.json"):
+def plot_training_curve(data_file="../models/d3q_training_data.json"):
     """Plot the training reward curve"""
     
     if not os.path.exists(data_file):
@@ -55,14 +55,14 @@ def plot_training_curve(data_file="../models/training_data.json"):
     plt.tight_layout()
     
     # Save plot
-    output_file = "../models/training_curve.png"
+    output_file = "../models/d3q_training_curve.png"
     plt.savefig(output_file, dpi=150)
     print(f"Plot saved to {output_file}")
     
     plt.show()
 
 
-def analyze_statistics(data_file="../models/training_data.json"):
+def analyze_statistics(data_file="../models/d3q_training_data.json"):
     """Print detailed statistics about training"""
     
     if not os.path.exists(data_file):
@@ -95,22 +95,22 @@ def analyze_statistics(data_file="../models/training_data.json"):
     print("=" * 60 + "\n")
 
 
-def test_trained_model(model_file="../models/q_network_final.pth"):
+def test_trained_model(model_file="../models/d3q_network_final.pth"):
     """Test the trained model (requires ARGoS to be running)"""
     
     if not os.path.exists(model_file):
         print(f"Error: {model_file} not found. Train a model first.")
         return
     
-    from q_network import QNetworkAgent
+    from d3q_network import D3QAgent
     
     # Load trained agent
-    agent = QNetworkAgent()
+    agent = D3QAgent()
     agent.load_model(model_file)
     agent.epsilon = 0.0  # No exploration, pure exploitation
     
     print("\n" + "=" * 60)
-    print("TESTING TRAINED MODEL")
+    print("TESTING TRAINED D3Q MODEL")
     print("=" * 60)
     print(f"Model: {model_file}")
     print(f"Epsilon: {agent.epsilon} (exploitation mode)")
@@ -145,11 +145,11 @@ def compare_training_runs(*data_files):
     
     plt.xlabel('Episode')
     plt.ylabel('Average Reward')
-    plt.title('Training Comparison')
+    plt.title('D3Q Training Comparison')
     plt.legend()
     plt.grid(True, alpha=0.3)
     
-    output_file = "../models/training_comparison.png"
+    output_file = "../models/d3q_training_comparison.png"
     plt.savefig(output_file, dpi=150)
     print(f"Comparison plot saved to {output_file}")
     
@@ -159,7 +159,7 @@ def compare_training_runs(*data_files):
 if __name__ == "__main__":
     import sys
     
-    print("\n=== Q-Learning Visualization Tools ===\n")
+    print("\n=== D3Q-Learning Visualization Tools ===\n")
     
     if len(sys.argv) > 1:
         if sys.argv[1] == "plot":

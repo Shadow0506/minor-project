@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Quick Learning Progress Viewer
+Quick D3Q Learning Progress Viewer
 Shows real-time learning statistics during demonstration
 """
 
@@ -13,7 +13,7 @@ def show_progress():
     """Display learning progress in real-time"""
     
     model_dir = "../models"
-    data_file = os.path.join(model_dir, "training_data.json")
+    data_file = os.path.join(model_dir, "d3q_training_data.json")
     
     print("=" * 60)
     print("REAL-TIME LEARNING PROGRESS MONITOR")

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Compare Before vs After - Show Learning Improvement
+Compare Before vs After - Show D3Q Learning Improvement
 """
 
 import matplotlib.pyplot as plt

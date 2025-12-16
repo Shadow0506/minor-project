@@ -1,5 +1,5 @@
 """
-Test Script for Q-Learning System
+Test Script for D3Q-Learning System
 
 This script tests individual components to verify the system is working correctly.
 Run this before starting full training to catch any issues early.
@@ -42,18 +42,18 @@ def test_imports():
 
 
 def test_q_network():
-    """Test Q-Network instantiation and forward pass"""
+    """Test D3Q-Network instantiation and forward pass"""
     print("=" * 60)
-    print("TEST 2: Testing Q-Network")
+    print("TEST 2: Testing D3Q-Network")
     print("=" * 60)
     
     try:
-        from q_network import QNetworkAgent
+        from d3q_network import D3QAgent
         import numpy as np
         
         # Create agent
-        agent = QNetworkAgent()
-        print("✓ Q-Network agent created")
+        agent = D3QAgent()
+        print("✓ D3Q-Network agent created")
         
         # Test state input
         test_state = np.random.rand(28)
@@ -79,7 +79,7 @@ def test_q_network():
             print("✓ Training works (insufficient samples for first train)")
         
     except Exception as e:
-        print(f"✗ Q-Network test failed: {e}")
+        print(f"✗ D3Q-Network test failed: {e}")
         return False
     
     print("")
@@ -119,7 +119,7 @@ def test_file_structure():
     print("=" * 60)
     
     required_files = [
-        "q_network.py",
+        "d3q_network.py",
         "q_server.py",
         "visualize.py",
         "requirements.txt",
